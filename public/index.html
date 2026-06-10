@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Events Calendar — 2026</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f7fa; padding: 2rem; color: #1a1a2e; }
+  h1 { text-align: center; margin-bottom: 0.5rem; font-size: 1.8rem; }
+  .legend { display: flex; justify-content: center; gap: 1.5rem; margin-bottom: 2rem; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
+  .quarter { margin-bottom: 2.5rem; }
+  .quarter-header { font-size: 1.2rem; font-weight: 700; color: #2d3748; margin-bottom: 1rem; padding-left: 0.5rem; border-left: 4px solid #4299e1; }
+  .quarter-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+  @media (max-width: 1000px) { .quarter-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 650px) { .quarter-grid { grid-template-columns: 1fr; } }
+  .month { background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); overflow: hidden; }
+  .month-header { background: #2d3748; color: #fff; padding: 0.7rem 1rem; font-size: 1rem; font-weight: 600; }
+  .weekdays { display: grid; grid-template-columns: repeat(5, 1fr); text-align: center; font-size: 0.72rem; font-weight: 600; color: #718096; padding: 0.5rem 0.4rem 0.2rem; }
+  .days { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 0.2rem 0.4rem 0.6rem; gap: 2px; }
+  .day { min-height: 48px; padding: 3px; border-radius: 5px; position: relative; overflow: hidden; }
+  .day.has-event { min-height: 60px; }
+  .day:hover { background: #f7fafc; }
+  .day-number { font-size: 0.75rem; font-weight: 500; color: #4a5568; margin-bottom: 1px; }
+  .day.empty { background: none; min-height: 48px; }
+  .day.today { background: #ebf8ff; box-shadow: inset 0 0 0 1px #90cdf4; }
+  .event { font-size: 0.6rem; padding: 2px 3px; border-radius: 3px; margin-bottom: 1px; line-height: 1.25; cursor: default; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .event:hover { white-space: normal; overflow: visible; position: relative; z-index: 10; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+  .event.external { background: #ebf4ff; border-left: 3px solid #4299e1; color: #2b6cb0; }
+  .event.highlight { background: #f0fff4; border-left: 3px solid #48bb78; color: #276749; }
+  .event.ana { background: #faf5ff; border-left: 3px solid #9f7aea; color: #553c9a; }
+  .tooltip { display: none; position: absolute; bottom: 100%; left: 0; background: #1a202c; color: #fff; padding: 0.5rem 0.7rem; border-radius: 6px; font-size: 0.72rem; width: 220px; z-index: 100; line-height: 1.4; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+  .event:hover .tooltip { display: block; }
+  .tooltip strong { display: block; margin-bottom: 0.2rem; }
+</style>
+</head>
+<body>
+<h1>Events Calendar 2026</h1>
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#4299e1"></div> External Speaker Series</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#48bb78"></div> Highlight Talks</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#9f7aea"></div> Ana Talks</div>
+</div>
+
+<div id="calendar"></div>
+
+<script>
+const events = [
+  { date: '2026-04-14', series: 'external', title: 'Sandro Pezzelle', org: 'UvA', desc: 'Multimodal AI and Ambiguous and underspecified language' },
+  { date: '2026-04-21', series: 'external', title: 'Albert Scerbo', org: 'MIT', desc: 'MIT Initiative for Digital Economy' },
+  { date: '2026-05-12', series: 'external', title: 'Avishek Anand', org: 'TU Delft', desc: 'Towards Self-Improving AI Systems' },
+  { date: '2026-05-13', series: 'highlight', title: 'Tax Assistant: Leveraging GenAI to Solve Tax Compliance for European Hotel Partners', org: 'Booking/MIT', desc: 'Jonathan Munton & project team — MIT IDE GenAI Lab' },
+  { date: '2026-06-09', series: 'external', title: 'Greg Neustroev', org: 'TU Delft', desc: 'Now you’re thinking with supermartingales: Formal verification of stochastic systems and neural networks' },
+  { date: '2026-06-11', series: 'external', title: 'Jason Hartline', org: 'Northwestern University', desc: 'Auction Theory and the Internet' },
+  { date: '2026-06-15', series: 'ana', title: 'EMG Framework', org: 'Booking', desc: 'Christina Katsimerou, Shivangee Rathi' },
+  { date: '2026-06-17', series: 'highlight', title: 'Customer Representations (Embeddings)', org: 'Booking', desc: 'Erico Santos — LTP \'25' },
+  { date: '2026-06-24', series: 'highlight', title: 'GenAI for Experimentation', org: 'Booking', desc: 'Antonio Castelli — LTP \'25' },
+  { date: '2026-08-11', series: 'external', title: 'Joaquin Vanschoren (tentative)', org: 'TUe', desc: 'Potential spot' },
+];
+
+const quarters = [
+  { label: 'Q1 — January to March', months: [0, 1, 2] },
+  { label: 'Q2 — April to June', months: [3, 4, 5] },
+  { label: 'Q3 — July to September', months: [6, 7, 8] },
+  { label: 'Q4 — October to December', months: [9, 10, 11] },
+];
+
+const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function getEventsForDate(dateStr) {
+  return events.filter(e => e.date === dateStr);
+}
+
+function getWeekday(year, month, day) {
+  return new Date(year, month, day).getDay();
+}
+
+function renderMonth(month) {
+  const year = 2026;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const today = new Date();
+
+  let html = `<div class="month"><div class="month-header">${monthNames[month]} 2026</div>`;
+  html += `<div class="weekdays"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span></div>`;
+  html += `<div class="days">`;
+
+  // Find the weekday of the first day (0=Sun, 1=Mon, ... 6=Sat)
+  const firstDow = getWeekday(year, month, 1);
+  // Convert to Mon-based index: Mon=0, Tue=1, Wed=2, Thu=3, Fri=4
+  // Sun(0)->skip, Mon(1)->0, Tue(2)->1, Wed(3)->2, Thu(4)->3, Fri(5)->4, Sat(6)->skip
+  const monBasedFirst = firstDow === 0 ? 6 : firstDow - 1; // Mon=0 ... Sun=6
+  // But we only show Mon-Fri, so empty slots before the first weekday
+  const emptySlotsStart = Math.min(monBasedFirst, 5); // cap at 5 (if starts on Sat/Sun, first visible day is Mon)
+
+  // We need to figure out which slot the first weekday lands on
+  // If month starts on Sat(6) or Sun(0), first visible day is the following Monday
+  let firstVisibleDay = 1;
+  if (firstDow === 0) firstVisibleDay = 2; // Sunday -> Monday is day 2
+  else if (firstDow === 6) firstVisibleDay = 3; // Saturday -> Monday is day 3
+
+  // Empty slots before first visible weekday
+  if (firstDow >= 1 && firstDow <= 5) {
+    // Starts on a weekday
+    for (let i = 0; i < firstDow - 1; i++) {
+      html += `<div class="day empty"></div>`;
+    }
+  }
+  // If starts on Sat or Sun, no leading empties (first visible day is Monday col 0)
+
+  for (let d = firstVisibleDay; d <= daysInMonth; d++) {
+    const dow = getWeekday(year, month, d);
+    // Skip weekends
+    if (dow === 0 || dow === 6) continue;
+
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const dayEvents = getEventsForDate(dateStr);
+    const isToday = today.getFullYear() === year && today.getMonth() === month && today.getDate() === d;
+    const hasEvent = dayEvents.length > 0;
+
+    html += `<div class="day${isToday ? ' today' : ''}${hasEvent ? ' has-event' : ''}">`;
+    html += `<div class="day-number">${d}</div>`;
+
+    for (const ev of dayEvents) {
+      html += `<div class="event ${ev.series}">
+        ${ev.title}
+        <div class="tooltip">
+          <strong>${ev.title}</strong>
+          ${ev.desc}<br>${ev.org}
+        </div>
+      </div>`;
+    }
+
+    html += `</div>`;
+  }
+
+  html += `</div></div>`;
+  return html;
+}
+
+let calendarHtml = '';
+for (const q of quarters) {
+  calendarHtml += `<div class="quarter">`;
+  calendarHtml += `<div class="quarter-header">${q.label}</div>`;
+  calendarHtml += `<div class="quarter-grid">`;
+  for (const m of q.months) {
+    calendarHtml += renderMonth(m);
+  }
+  calendarHtml += `</div></div>`;
+}
+
+document.getElementById('calendar').innerHTML = calendarHtml;
+</script>
+</body>
+</html>
